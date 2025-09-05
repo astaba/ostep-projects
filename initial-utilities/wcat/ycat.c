@@ -1,5 +1,12 @@
+// ostep-projects/initial-utilities/wcat/ycat.c
 // Create on: Fri Sep  5 21:05:16 +01 2025
-// Primitiv emulator of "cat" utility
+// INFO:
+// My primitive emulator of "cat" utility
+// Improvement:
+// 1. On invalid argument exit with POSIX standard explicit code
+// 2. On fopen() failure (non-existent) print more explicit error message
+//    but do not exit. Save exit status and proceed to next arguments.
+// 3. Performance: IO with fread/fwrite is much faster than fgets/printf
 
 #include <errno.h>
 #include <stdio.h>
@@ -13,8 +20,12 @@
 int main(int argc, char *argv[]) {
   int exit_status = EXIT_SUCCESS;
 
-  if (argc == 1)
-    return 2; // POSIX conventions: usage error (e.g., invalid arguments)
+  if (argc == 1) {
+    /* return EXIT_SUCCESS; // Test 4 */
+
+    // POSIX conventions: usage error (e.g., invalid arguments)
+    return EXIT_USAGE_ERROR;
+  }
 
   // Allocate a reusable buffer for file I\O
   char *buffer = malloc(sizeof(char) * BUFSIZ);
@@ -28,7 +39,13 @@ int main(int argc, char *argv[]) {
 
     FILE *fp = fopen(argv[i], "r");
     if (fp == NULL) {
-      perror(argv[i]);
+      /* printf("wcat: cannot open file\n"); // Test 6
+      exit(EXIT_FAILURE); */
+
+      // My version: Do not terminate on non-existent file.
+      // Print explicit error message and proceed to next argument.
+      fprintf(stderr, "ycat: cannot open file %s: %s\n", argv[i],
+              strerror(errno));
       exit_status = EXIT_FAILURE;
       continue;
     }
@@ -36,7 +53,8 @@ int main(int argc, char *argv[]) {
     size_t bytes_read = 0;
     while ((bytes_read = fread(buffer, sizeof(char), BUFSIZ, fp)) > 0) {
       if (fwrite(buffer, sizeof(char), bytes_read, stdout) < bytes_read) {
-        perror("ycat: write error");
+        fprintf(stderr, "ycat: error writing file %s: %s\n", argv[i],
+                strerror(errno));
         exit_status = EXIT_FAILURE;
         break;
       }
