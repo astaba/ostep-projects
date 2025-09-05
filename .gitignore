@@ -43,6 +43,10 @@ bin/
 *.i*86
 *.x86_64
 *.hex
+**/wcat/wcat
+**/wgrep/wgrep
+**/wunzip/wunzip
+**/wzip/wzip
 
 # Debug files
 *.dSYM/
