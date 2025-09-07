@@ -13,6 +13,25 @@
 void mygetline(FILE *stream, const char *searchterm, const char *filename);
 char *istrstr(const char *haystack, const char *needle);
 
+/**
+ * @brief Main entry point for the ygrep utility.
+ * This program searches for a given search term in one or more files, or from
+ * standard input if no files are specified.
+ * Usage: ygrep <searchterm> [filename ...]
+ * Arguments:
+ *   argc      The number of command-line arguments.
+ *   argv      The array of command-line argument strings.
+ * Behavior:
+ *   - If fewer than 2 arguments are provided, prints usage information and
+ * exits with failure.
+ *   - If only the search term is provided, reads from standard input and
+ * searches for the term.
+ *   - If filenames are provided, opens each file in turn, searches for the
+ * term, and prints matching lines.
+ *   - If a file cannot be opened, prints an error message and exits with
+ * failure.
+ * Return: EXIT_SUCCESS on successful completion, EXIT_FAILURE on error.
+ */
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <searchterm> [filename .. .. ..]\n", argv[0]);
@@ -40,6 +59,27 @@ int main(int argc, char *argv[]) {
   return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Reads lines from a given file stream, searches for a specified term,
+ * and prints matching lines with context.
+ * This function reads the input stream line by line, dynamically handling lines
+ * of arbitrary length. For each line, it searches for all (case-insensitive)
+ * occurrences of the specified search term. When a match is found, it prints
+ * the filename, line number, column number, and the full line containing the
+ * match. If no matches are found in the entire file, a message is printed
+ * indicating no matches.
+ * @param stream      Pointer to the input FILE stream to read from.
+ * @param searchterm  The string to search for within each line of the file.
+ * @param filename    The name of the file being processed (used for output
+ * context).
+ * @note
+ * - The function uses a dynamically allocated buffer to handle lines longer
+ * than BUFSIZ.
+ * - It assumes the existence of a case-insensitive substring search function
+ * `istrstr`.
+ * - The function prints output in the format: filename:line:column:line_content
+ * - If memory allocation fails, the function prints an error and exits.
+ */
 void mygetline(FILE *stream, const char *searchterm, const char *filename) {
   // A fixed-size buffer to read chunks of data from the stream.
   char buffer[BUFSIZ];
@@ -103,8 +143,17 @@ void mygetline(FILE *stream, const char *searchterm, const char *filename) {
   }
 }
 
-/* istrstr is not a standard library function. */
-/* This is a case-insensitive version of strstr. */
+/**
+ * istrstr - Case-insensitive substring search.
+ * Searches for the first occurrence of the substring 'needle' in the string
+ * 'haystack', ignoring the case of both strings. The search is case-insensitive
+ * and returns a pointer to the beginning of the located substring, or NULL if
+ * the substring is not found.
+ * @param haystack The string to be searched.
+ * @param needle   The substring to search for.
+ * @return         A pointer to the first occurrence of 'needle' in 'haystack'
+ * (case-insensitive), or NULL if 'needle' is not found or is an empty string.
+ */
 char *istrstr(const char *haystack, const char *needle) {
   if (!*needle)
     return NULL;

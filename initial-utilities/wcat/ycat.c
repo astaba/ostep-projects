@@ -16,6 +16,7 @@
 #ifndef BUFSIZ
 #define BUFSIZ 4096
 #endif
+#define EXIT_USAGE_ERROR 2
 
 int main(int argc, char *argv[]) {
   int exit_status = EXIT_SUCCESS;
@@ -27,11 +28,11 @@ int main(int argc, char *argv[]) {
     return EXIT_USAGE_ERROR;
   }
 
-  // Allocate a reusable buffer for file I\O
-  char *buffer = malloc(sizeof(char) * BUFSIZ);
+  char *buffer = malloc(BUFSIZ);
   if (buffer == NULL) {
     perror("ycat: buffer allocation failed");
-    exit(EXIT_FAILURE);
+    exit_status = EXIT_FAILURE;
+    return exit_status;
   }
 
   // Process each file argument in order
