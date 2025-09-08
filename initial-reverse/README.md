@@ -76,9 +76,10 @@ file, i.e., it may be **VERY** long.
 
 - **Invalid files:** If the user specifies an input file or output file, and
 for some reason, when you try to open said file (e.g., `input.txt`) and
-fail, you should print out the following exact error message: `error:
-cannot open file 'input.txt'` and then exit with return code 1 (i.e., call
-`exit(1);`).
+fail, you should print out the following exact error message:
+`reverse: cannot open file 'input.txt'` (where the `input.txt` string is passed
+through `argv[1]` as a variadic argument of `fprintf()`) and then exit with
+return code 1 (i.e., call `exit(1);`).
 
 - **Malloc fails:** If you call `malloc()` to allocate some memory, and
 malloc fails, you should print the error message `malloc failed` and exit

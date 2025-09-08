@@ -10,7 +10,7 @@ typedef struct singleline {
   struct singleline *next;
 } SINGLELINE;
 size_t storelines(FILE *stream, SINGLELINE **head);
-void displayline(SINGLELINE *head) {
+void displayline(FILE *stream, SINGLELINE *head) {
   SINGLELINE *currnode = head;
   /* while (currnode != NULL) {
     printf("%s", currnode->line);
@@ -19,15 +19,14 @@ void displayline(SINGLELINE *head) {
   while (currnode != NULL) {
     char *ptr = currnode->line;
     size_t len = strlen(ptr);
-    fwrite(ptr, 1, len, stdout);
+    fwrite(ptr, 1, len, stream);
     currnode = currnode->next;
   }
 }
 
 int main(int argc, char *argv[]) {
   if (argc > 3) {
-    // TODO:
-    printf("Error");
+    fprintf(stderr, "usage: reverse <input> <output>\n");
     exit(EXIT_FAILURE);
   }
 
@@ -35,24 +34,36 @@ int main(int argc, char *argv[]) {
 
   if (argc == 1) {
     // TODO:
-  } else if (argc == 2) {
-    char *infile;
-    // TODO:
-    infile = argv[1];
-    FILE *fp = fopen(infile, "r");
-    if (fp == NULL) {
-      perror("fopen() failed");
+  } else {
+    char *infile = argv[1];
+    FILE *fpi = fopen(infile, "r");
+    if (fpi == NULL) {
+      fprintf(stderr, "reverse: cannot open file '%s'\n", infile);
       exit(EXIT_FAILURE);
     }
-    if (storelines(fp, &head) == EXIT_SUCCESS) {
-      displayline(head);
+
+    if (storelines(fpi, &head) == EXIT_SUCCESS) {
+      if (argc == 2) {
+        displayline(stdout, head);
+      } else {
+        // FIX: Make sure input file and output file are not the same.
+        // strcmp would be reliable only after bash path expansion.
+        char *outfile = argv[2];
+        if (!strcmp(infile, outfile)) {
+          fprintf(stderr, "Input and output file must differ\n");
+          exit(EXIT_FAILURE);
+        }
+
+        FILE *fpo = fopen(outfile, "w");
+        if (fpo == NULL) {
+          fprintf(stderr, "reverse: cannot open file '%s'\n", outfile);
+          exit(EXIT_FAILURE);
+        }
+        displayline(fpo, head);
+        fclose(fpo);
+      }
     }
-  } else {
-    // TODO:
-    /* char *infile; */
-    /* char *outfile; */
-    /* infile = argv[1]; */
-    /* outfile = argv[2]; */
+    fclose(fpi);
   }
 
   if (head != NULL) {
