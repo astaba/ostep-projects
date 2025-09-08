@@ -2,15 +2,17 @@
 // Created on: Mon Sep  8 16:16:55 +01 2025
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 typedef struct singleline {
   char *line;
   struct singleline *next;
 } SINGLELINE;
 size_t storelines(FILE *stream, SINGLELINE **head);
-void displayline(FILE *stream, SINGLELINE *head) {
+void dumplines(FILE *stream, SINGLELINE *head) {
   SINGLELINE *currnode = head;
   /* while (currnode != NULL) {
     printf("%s", currnode->line);
@@ -22,6 +24,20 @@ void displayline(FILE *stream, SINGLELINE *head) {
     fwrite(ptr, 1, len, stream);
     currnode = currnode->next;
   }
+}
+
+bool is_same_file(const char *path1, const char *path2) {
+  struct stat stat1, stat2;
+
+  if (stat(path1, &stat1) != 0) {
+    fprintf(stderr, "Error getting stat for %s: %s", path1, strerror(errno));
+    return false;
+  }
+  if (stat(path2, &stat2) != 0) {
+    fprintf(stderr, "Error getting stat for %s: %s", path2, strerror(errno));
+    return false;
+  }
+  return (stat1.st_dev == stat2.st_dev) && (stat1.st_ino == stat2.st_ino);
 }
 
 int main(int argc, char *argv[]) {
@@ -43,14 +59,14 @@ int main(int argc, char *argv[]) {
     }
 
     if (storelines(fpi, &head) == EXIT_SUCCESS) {
+      fclose(fpi);
+
       if (argc == 2) {
-        displayline(stdout, head);
+        dumplines(stdout, head);
       } else {
-        // FIX: Make sure input file and output file are not the same.
-        // strcmp would be reliable only after bash path expansion.
         char *outfile = argv[2];
-        if (!strcmp(infile, outfile)) {
-          fprintf(stderr, "Input and output file must differ\n");
+        if (is_same_file(infile, outfile)) {
+          fprintf(stderr, "reverse: input and output file must differ\n");
           exit(EXIT_FAILURE);
         }
 
@@ -59,11 +75,10 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "reverse: cannot open file '%s'\n", outfile);
           exit(EXIT_FAILURE);
         }
-        displayline(fpo, head);
+        dumplines(fpo, head);
         fclose(fpo);
       }
     }
-    fclose(fpi);
   }
 
   if (head != NULL) {

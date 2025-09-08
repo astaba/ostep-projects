@@ -65,8 +65,8 @@ Sounds easy, right? It should. But there are a few details...
 ## Assumptions and Errors
 
 - **Input is the same as output:** If the input file and output file are the
-same file, you should print out an error message "Input and output file must
-differ" and exit with return code 1.
+same file, you should print out an error message
+`reverse: input and output file must differ` and exit with return code 1.
 
 - **String length:** You may not assume anything about how long a line should
 be. Thus, you may have to read in a very long input line...
@@ -145,3 +145,32 @@ type `cp reverse.c reverse.v1.c` to make a copy into the file
 `reverse.v1.c`. More sophisticated developers use version control systems git
 (perhaps through github); such a tool is well worth learning, so do it!
 
+## Best way to make sure files are not the same
+
+The issue isn't about the string; it's about the **underlying file's identity**.
+A single file can have multiple paths pointing to it, such as:
+
+- Different absolute vs. relative paths: `/home/user/app/file.txt` vs. `../app/file.txt`
+- Hard links: `file1.txt` and `file2.txt` might be hard links to the same file
+data on the disk.
+- Symbolic links: `link.txt` might be a shortcut pointing to `file.txt.`
+
+The safe and canonical strategy to solve this is to use the `stat()` system
+call. `stat()` retrieves metadata about a file from the file system. Crucially,
+this metadata includes a unique identifier for the file:
+the **device ID** and the **inode number**.
+
+### The `stat()` Strategy
+
+Every file on a Linux or Unix-like file system is uniquely identified by the
+combination of its device ID (`st_dev`) and its inode number (`st_ino`).
+
+The correct approach is to:
+
+1. Use `stat()` to get the `struct stat` for the first file path.
+2. Use `stat()` again to get the `struct stat` for the second file path.
+3. Compare the `st_dev` and `st_ino` members of the two structs.
+If both are equal, the paths refer to the same file.
+
+This method works because both relative and absolute paths, as well as
+hard links, will resolve to the exact same device and inode number.
