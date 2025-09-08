@@ -39,6 +39,7 @@ tests-out/
 bin/
 *.exe
 *.out
+!tests/*.out
 *.app
 *.i*86
 *.x86_64
