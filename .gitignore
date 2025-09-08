@@ -47,6 +47,7 @@ bin/
 **/wgrep/wgrep
 **/wunzip/wunzip
 **/wzip/wzip
+**/initial-reverse/reverse
 
 # Debug files
 *.dSYM/
