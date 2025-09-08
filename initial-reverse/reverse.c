@@ -1,44 +1,20 @@
 /* ostep-projects/initial-reverse/reverse.c */
 // Created on: Mon Sep  8 16:16:55 +01 2025
-
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+
 typedef struct singleline {
   char *line;
   struct singleline *next;
 } SINGLELINE;
+
 size_t storelines(FILE *stream, SINGLELINE **head);
-void dumplines(FILE *stream, SINGLELINE *head) {
-  SINGLELINE *currnode = head;
-  /* while (currnode != NULL) {
-    printf("%s", currnode->line);
-    currnode = currnode->next;
-  } */
-  while (currnode != NULL) {
-    char *ptr = currnode->line;
-    size_t len = strlen(ptr);
-    fwrite(ptr, 1, len, stream);
-    currnode = currnode->next;
-  }
-}
-
-bool is_same_file(const char *path1, const char *path2) {
-  struct stat stat1, stat2;
-
-  if (stat(path1, &stat1) != 0) {
-    fprintf(stderr, "Error getting stat for %s: %s", path1, strerror(errno));
-    return false;
-  }
-  if (stat(path2, &stat2) != 0) {
-    fprintf(stderr, "Error getting stat for %s: %s", path2, strerror(errno));
-    return false;
-  }
-  return (stat1.st_dev == stat2.st_dev) && (stat1.st_ino == stat2.st_ino);
-}
+void dumplines(FILE *stream, SINGLELINE *head);
+bool is_same_file(const char *path1, const char *path2);
 
 int main(int argc, char *argv[]) {
   if (argc > 3) {
@@ -49,7 +25,9 @@ int main(int argc, char *argv[]) {
   SINGLELINE *head = NULL;
 
   if (argc == 1) {
-    // TODO:
+    if (storelines(stdin, &head) == EXIT_SUCCESS) {
+      dumplines(stdout, head);
+    }
   } else {
     char *infile = argv[1];
     FILE *fpi = fopen(infile, "r");
@@ -59,7 +37,6 @@ int main(int argc, char *argv[]) {
     }
 
     if (storelines(fpi, &head) == EXIT_SUCCESS) {
-      fclose(fpi);
 
       if (argc == 2) {
         dumplines(stdout, head);
@@ -79,6 +56,7 @@ int main(int argc, char *argv[]) {
         fclose(fpo);
       }
     }
+    fclose(fpi);
   }
 
   if (head != NULL) {
@@ -135,4 +113,32 @@ size_t storelines(FILE *stream, SINGLELINE **head) {
   }
 
   return EXIT_SUCCESS;
+}
+
+void dumplines(FILE *stream, SINGLELINE *head) {
+  SINGLELINE *currnode = head;
+  while (currnode != NULL) {
+    fprintf(stream, "%s", currnode->line);
+    currnode = currnode->next;
+  }
+  /* while (currnode != NULL) {
+    char *ptr = currnode->line;
+    size_t len = strlen(ptr);
+    fwrite(ptr, 1, len, stream);
+    currnode = currnode->next;
+  } */
+}
+
+bool is_same_file(const char *path1, const char *path2) {
+  struct stat stat1, stat2;
+
+  if (stat(path1, &stat1) != 0) {
+    fprintf(stderr, "Error getting stat for %s: %s", path1, strerror(errno));
+    return false;
+  }
+  if (stat(path2, &stat2) != 0) {
+    fprintf(stderr, "Error getting stat for %s: %s", path2, strerror(errno));
+    return false;
+  }
+  return (stat1.st_dev == stat2.st_dev) && (stat1.st_ino == stat2.st_ino);
 }
