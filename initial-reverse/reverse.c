@@ -1,5 +1,6 @@
 /* ostep-projects/initial-reverse/reverse.c */
 // Created on: Mon Sep  8 16:16:55 +01 2025
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -60,50 +61,50 @@ int main(int argc, char *argv[]) {
   }
 
   if (head != NULL) {
-    SINGLELINE *currnode = head;
-    while (currnode != NULL) {
-      SINGLELINE *tmpnode = currnode->next;
-      free(currnode->line);
-      free(currnode);
-      currnode = tmpnode;
+    for (SINGLELINE *curr = head; curr; curr = head) {
+      head = curr->next;
+      free(curr->line);
+      free(curr);
     }
   }
   return EXIT_SUCCESS;
 }
 
+// NOTE: The return status are good but not used meaningfully.
+// Could return the number of line read and treat 0 as error.
 size_t storelines(FILE *stream, SINGLELINE **head) {
   char buffer[4096];
   char *lineptr = NULL;
-  size_t wholelen = 0;
+  size_t linelen = 0;
 
-  while (fgets(buffer, 4096, stream) != NULL) {
+  while (fgets(buffer, 4096, stream)) {
     size_t chunklen = strlen(buffer);
 
-    char *tmp_ptr = realloc(lineptr, wholelen + chunklen + 1);
-    if (tmp_ptr == NULL) {
-      perror("realloc() failed");
+    char *tmp = realloc(lineptr, linelen + chunklen + 1);
+    if (!tmp) {
       free(lineptr);
+      perror("realloc() failed");
       exit(EXIT_FAILURE);
     } else {
-      lineptr = tmp_ptr;
+      lineptr = tmp;
     }
 
-    memcpy(lineptr + wholelen, buffer, chunklen + 1);
-    wholelen += chunklen;
+    memcpy(lineptr + linelen, buffer, chunklen + 1);
+    linelen += chunklen;
 
     if (buffer[chunklen - 1] == '\n' || feof(stream)) {
       // build linked list
-      SINGLELINE *newnode = calloc(1, sizeof(SINGLELINE));
-      if (newnode == NULL) {
+      SINGLELINE *node = calloc(1, sizeof(*node));
+      if (!node) {
         perror("calloc() failed");
         return EXIT_FAILURE;
       }
-      newnode->line = lineptr;
-      newnode->next = *head;
-      *head = newnode;
-
+      node->line = lineptr;
+      node->next = *head; // prepend, making list reverse by construction.
+      *head = node;
+      // Housekeeping for next line memory allocation.
       lineptr = NULL;
-      wholelen = 0;
+      linelen = 0;
     }
   }
 
@@ -116,29 +117,23 @@ size_t storelines(FILE *stream, SINGLELINE **head) {
 }
 
 void dumplines(FILE *stream, SINGLELINE *head) {
-  SINGLELINE *currnode = head;
-  while (currnode != NULL) {
-    fprintf(stream, "%s", currnode->line);
-    currnode = currnode->next;
+  for (SINGLELINE *curr = head; curr; curr = curr->next) {
+    fprintf(stream, "%s", curr->line);
   }
-  /* while (currnode != NULL) {
-    char *ptr = currnode->line;
-    size_t len = strlen(ptr);
-    fwrite(ptr, 1, len, stream);
-    currnode = currnode->next;
-  } */
 }
 
 bool is_same_file(const char *path1, const char *path2) {
   struct stat stat1, stat2;
 
-  if (stat(path1, &stat1) != 0) {
-    fprintf(stderr, "Error getting stat for %s: %s", path1, strerror(errno));
+  if (stat(path1, &stat1) || stat(path2, &stat2)) {
+    // WARNING: By returning false this project requirements impose to assume
+    // difference in case of stat() failure (may be due to nonexistent file).
+    // Comply to pass the test. But that is a dangerous flaw that could entail
+    // massive data loss (both files could still be the same but stat() failed
+    // simply because of lack of read rights) For safety always assume identity
+    // in case of check-fail and return true. Fail-safe is better.
     return false;
   }
-  if (stat(path2, &stat2) != 0) {
-    fprintf(stderr, "Error getting stat for %s: %s", path2, strerror(errno));
-    return false;
-  }
+
   return (stat1.st_dev == stat2.st_dev) && (stat1.st_ino == stat2.st_ino);
 }

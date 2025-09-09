@@ -8,7 +8,9 @@ CC       := gcc
 CFLAGS   := -Wall -Werror
 # DBGFLAGS := -g3 -O0 -DDEBUG
 SRCS     := reverse.c
-MYSRCS   :=
+# SRCS     := yreverse.c
+# SRCS     := reverse-v1.c
+MYSRCS   := reverse-v1.c yreverse.c
 MYBINS   := $(subst .c,.out,$(MYSRCS))
 
 all: reverse $(MYBINS)

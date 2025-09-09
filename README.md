@@ -103,5 +103,86 @@ and install the tools you'll need.
 
 ### File Systems
 
+## Practice order
 
+```bash
+tree -d -L 1
+.
+├── 9.  concurrency-mapreduce
+├── 6.  concurrency-pzip
+├── 7.  concurrency-sort
+├── 8.  concurrency-webserver
+├── 13. concurrency-xv6-threads
+├── 15. filesystems-checker
+├── 16. filesystems-distributed
+├── 17. filesystems-distributed-ufs
+├── 3.  initial-kv
+├── 4.  initial-memcached
+├── 2.  initial-reverse              (done)
+├── 1.  initial-utilities            (done)
+├── 10. initial-xv6
+├── 11. initial-xv6-tracer
+├── 5.  processes-shell
+├── 14. scheduling-xv6-lottery
+├── tester
+└── 12. vm-xv6-intro
+
+19 directories
+```
+
+Here is the combined, recommended order that aligns with the book's structure
+and a natural learning curve, incorporating all the projects from this `README`
+file.
+
+---
+
+### 1. Foundational C & Utilities
+
+These projects are excellent for getting comfortable with the C/UNIX environment,
+command-line arguments, and basic I/O.
+
+* `initial-utilities` (cat, grep, etc.)
+* `initial-reverse`
+* `initial-kv`
+* `initial-memcached`
+
+### 2. Processes
+
+This is the heart of the first major section of the book.
+
+* `processes-shell` (Build your own shell)
+
+### 3. Virtual Memory & Threads (User Space)
+
+This section introduces memory allocation and concurrency outside of the kernel.
+
+* `Memory Allocator` (This project is not in a specific directory in your `tree`
+but is a common assignment in the book's VM chapter)
+
+* `concurrency-pzip`
+* `concurrency-sort`
+* `concurrency-webserver`
+* `concurrency-mapreduce`
+
+### 4. Kernel Hacking (xv6)
+
+These are the most advanced projects, where you'll modify the kernel itself.
+It's best to tackle them after you've mastered the concepts in user space.
+
+* `initial-xv6`
+* `vm-xv6-intro` (Virtual Memory project inside xv6)
+* `concurrency-xv6-threads` (Kernel Threads)
+* `scheduling-xv6-lottery`
+* `initial-xv6-tracer`
+
+### 5. File Systems
+
+This is the final major section, dealing with on-disk data structures.
+
+* `filesystems-checker`
+* `filesystems-distributed`
+* `filesystems-distributed-ufs`
+
+This unified roadmap provides a clear path forward, building from simpler
+concepts to more complex ones. It should make the project sequence much easier to follow.
 
