@@ -49,6 +49,7 @@ bin/
 **/wunzip/wunzip
 **/wzip/wzip
 **/initial-reverse/reverse
+**/initial-kv/kv
 
 # Debug files
 *.dSYM/
