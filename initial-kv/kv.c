@@ -31,15 +31,22 @@ typedef struct keyValue {
 // =============================================================================
 // =============================================================================
 void dbmanager(keyvalues_t **head, char *option, int key, char *value) {
-  char option_char = option[0]; // Either of chars in: "acdgp"
-  switch (option_char) {
+  // Either of chars in: "acdgp"
+  switch (option[0]) {
   case 'a': { // Get all key value
-    for (keyvalues_t *curr = *head; curr; curr = curr->next) {
-      printf("%d,%s\n", curr->key, curr->value);
+    if (*head == NULL) {
+      // FIX: This notification conflict with the first fopen() call error
+      // notification
+      /* printf("Database empty.\n"); */
+    } else {
+      for (keyvalues_t *curr = *head; curr; curr = curr->next) {
+        printf("%d,%s\n", curr->key, curr->value);
+      }
     }
     break;
   }
   case 'c': { // Clear all key value
+    printf("Clearing database.\n");
     for (keyvalues_t *curr = *head; curr; curr = *head) {
       *head = curr->next;
       free(curr->value);
@@ -48,14 +55,31 @@ void dbmanager(keyvalues_t **head, char *option, int key, char *value) {
     break;
   }
   case 'd': { // Delete single key
-    keyvalues_t *curr = NULL;
-    keyvalues_t *prev = NULL;
-    for (curr = *head; curr && curr->key != key; curr = curr->next) {
-      prev = curr;
+    if (*head == NULL) {
+      printf("Could not delete entry %d: Database already empty.\n", key);
+      return;
     }
-    if (curr) {
-      // BUG: If try delete head node: prev->next is SEG FAULT !!!
+
+    keyvalues_t *curr = *head;
+    if (curr->key == key) {
+      *head = curr->next;
+      printf("Deleting: %d,%s\n", curr->key, curr->value);
+      free(curr->value);
+      free(curr);
+      return;
+    }
+
+    keyvalues_t *prev = NULL;
+    while (curr && curr->key != key) {
+      prev = curr;
+      curr = curr->next;
+    }
+
+    if (!curr) {
+      printf("Could not delete entry %d: No such entry.\n", key);
+    } else {
       prev->next = curr->next;
+      printf("Deleting: %d,%s\n", curr->key, curr->value);
       free(curr->value);
       free(curr);
     }
@@ -67,6 +91,8 @@ void dbmanager(keyvalues_t **head, char *option, int key, char *value) {
     }
     if (curr) {
       printf("%d,%s\n", curr->key, curr->value);
+    } else {
+      printf("Could not get entry %d: No such entry.\n", key);
     }
     break;
   }

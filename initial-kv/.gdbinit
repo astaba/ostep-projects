@@ -23,3 +23,4 @@ end
 run "p,49,paksylon"
 # run "a"
 # run "c"
+run "d,39"
