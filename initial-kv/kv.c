@@ -11,24 +11,11 @@
 #define BUFSIZ 4096
 #endif /* ifndef BUFSIZ */
 // =============================================================================
-/* typedef struct key {
-  int key;
-  struct key *next;
-} keys_t; */
 typedef struct keyValue {
   int key;
   char *value;
   struct keyValue *next;
 } keyvalues_t;
-
-/* typedef struct {
-  keyvalues_t *put;
-  keys_t *get;
-  keys_t *delete;
-  bool clear;
-  bool all;
-} Options_t; */
-// =============================================================================
 // =============================================================================
 void dbmanager(keyvalues_t **head, char *option, int key, char *value) {
   // Either of chars in: "acdgp"
@@ -92,7 +79,7 @@ void dbmanager(keyvalues_t **head, char *option, int key, char *value) {
     if (curr) {
       printf("%d,%s\n", curr->key, curr->value);
     } else {
-      printf("Could not get entry %d: No such entry.\n", key);
+      printf("%d not found\n", key);
     }
     break;
   }
@@ -174,10 +161,7 @@ int main(int argc, char *argv[]) {
         line[strcspn(line, "\n")] = '\0';
         char *linecpy_p = line;
 
-        // TODO:
-        // 1. Make sure database is not corrupted
-        // 2. Try keeping the line pointer to save extra dynamalloc
-        // in dbmanager.
+        // TODO: 1. Make sure database is not corrupted
         char *nptr = strsep(&linecpy_p, ",");
         char *value = strsep(&linecpy_p, ",");
         int key = atoi(nptr);
@@ -208,31 +192,38 @@ int main(int argc, char *argv[]) {
       // Check for various error conditions.
       // 1. Check for overflow/underflow (errno is set).
       if (errno == ERANGE) {
-        perror("strtol() failed due to range error");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Range error at argument %lu: %s\n", i,
+                strerror(errno));
+        continue;
       }
       // 2. Check if no digits were found.
       // no conversion: endptr will point to the beginning of nptr
       if (endptr == nptr) {
-        fprintf(stderr, "No digits were found in '%s'.\n", nptr);
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Invalid key at argument %lu: '%s'\n", i, nptr);
+        continue;
       }
       // 3. Check for leftover characters: Not necessarily an error:
       // endptr is not at nptr's end: nptr is not a pure number
       if (*endptr != '\0') {
-        fprintf(stderr, "Trailing characters in '%s' after conversion.\n",
+        fprintf(stderr, "Trailing character(s) at arugment %lu: '%s'\n", i,
                 nptr);
-        exit(EXIT_FAILURE);
+        continue;
       }
     }
 
     if (!strlen(option)) {
-      fprintf(stderr, "Error: no initial option at argument %lu\n", (i - 1));
-      exit(EXIT_FAILURE);
+      fprintf(stderr, "Missing opiton at argument %lu: %s\n", i, option);
+      continue;
     }
     char *valid_opts = "acdgp";
     if (strstr(valid_opts, option)) {
+      if (!strcmp(option, "p") && !value) {
+        fprintf(stderr, "Missing value at argument %lu\n", i);
+        continue;
+      }
       dbmanager(&dbhead, option, key, value);
+    } else {
+      fprintf(stderr, "Bad opiton at argument %lu: %s\n", i, option);
     }
   }
 
