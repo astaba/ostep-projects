@@ -116,7 +116,7 @@ tree -d -L 1
 ├── 15. filesystems-checker
 ├── 16. filesystems-distributed
 ├── 17. filesystems-distributed-ufs
-├── 3.  initial-kv
+├── 3.  initial-kv                   (done)
 ├── 4.  initial-memcached
 ├── 2.  initial-reverse              (done)
 ├── 1.  initial-utilities            (done)

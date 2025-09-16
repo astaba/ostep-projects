@@ -1,3 +1,23 @@
+/* ostep-projects/initial-kv/kv-v1.c */
+// =============================================================================
+// Program: Simple Key-Value Store
+// Created on: Tue Sep 16 22:19:08 +01 2025
+// Author: <Your Name>
+// =============================================================================
+// Description: This program implements a lightweight persistent key-value store
+// backed by a text file. Data is stored in the form: key,value
+// The store supports the following operations:
+//   - a: Get all key-value pairs
+//   - c: Clear all key-value pairs
+//   - d,<key>: Delete entry by key
+//   - g,<key>: Get single entry by key
+//   - p,<key>,<value>: Insert or update entry
+// Persistence is handled via atomic file replacement using `rename()`.
+// Build: gcc -Wall -Wextra -pedantic -std=c11 -o kvstore kvstore.c
+// Usage: ./kvstore <option>,[key],[value]...
+// Example: ./kvstore p,1,hello g,1
+// =============================================================================
+
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -5,38 +25,50 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifndef BUFSIZ
-#define BUFSIZ 4096
-#endif /* ifndef BUFSIZ */
-
 // =============================================================================
 // Data Structures
 // =============================================================================
+
+/**
+ * @struct keyValue
+ * @brief A node in the linked list storing a key-value pair.
+ * Each node contains:
+ *   - `key`: integer identifier
+ *   - `value`: dynamically allocated string
+ *   - `next`: pointer to the next node
+ */
 typedef struct keyValue {
   int key;
   char *value;
   struct keyValue *next;
-} keyvalues_t;
+} kv_t;
 
 // =============================================================================
 // Helper Functions (Linked List Management)
 // =============================================================================
+
 /**
- * @brief Manages the key-value store operations.
- * * @param head A pointer to the head of the linked list.
- * @param option A string representing the desired operation ('a', 'c', 'd',
- * 'g', 'p').
- * @param key The integer key for the operation.
- * @param value The value string for 'p' (put) operations.
+ * @brief Manage the key-value store operations.
+ *
+ * Supported operations:
+ *   - 'a': Print all key-value pairs.
+ *   - 'c': Clear all key-value pairs.
+ *   - 'd': Delete a key-value pair by key.
+ *   - 'g': Get and print a single key-value pair by key.
+ *   - 'p': Insert or update a key-value pair.
+ *
+ * @param head   Pointer to the head pointer of the linked list.
+ * @param option Single-character string representing the operation.
+ * @param key    Key associated with the operation.
+ * @param value  Value string for 'p' (put) operations (may be NULL otherwise).
  */
-void dbmanager(keyvalues_t **head, const char *option, int key,
-               const char *value) {
+void dbmanager(kv_t **head, const char *option, int key, const char *value) {
   switch (option[0]) {
   case 'a': { // Get all key-value pairs
     if (*head == NULL) {
       printf("Database is empty.\n");
     } else {
-      for (keyvalues_t *curr = *head; curr; curr = curr->next) {
+      for (kv_t *curr = *head; curr; curr = curr->next) {
         printf("%d,%s\n", curr->key, curr->value);
       }
     }
@@ -44,9 +76,9 @@ void dbmanager(keyvalues_t **head, const char *option, int key,
   }
   case 'c': { // Clear all key-value pairs
     printf("Clearing database.\n");
-    keyvalues_t *curr = *head;
+    kv_t *curr = *head;
     while (curr) {
-      keyvalues_t *temp = curr;
+      kv_t *temp = curr;
       curr = curr->next;
       free(temp->value);
       free(temp);
@@ -55,8 +87,8 @@ void dbmanager(keyvalues_t **head, const char *option, int key,
     break;
   }
   case 'd': { // Delete a single key-value pair
-    keyvalues_t *curr = *head;
-    keyvalues_t *prev = NULL;
+    kv_t *curr = *head;
+    kv_t *prev = NULL;
 
     while (curr && curr->key != key) {
       prev = curr;
@@ -78,7 +110,7 @@ void dbmanager(keyvalues_t **head, const char *option, int key,
     break;
   }
   case 'g': { // Get a single key-value pair
-    keyvalues_t *curr = *head;
+    kv_t *curr = *head;
     while (curr && curr->key != key) {
       curr = curr->next;
     }
@@ -92,8 +124,8 @@ void dbmanager(keyvalues_t **head, const char *option, int key,
     break;
   }
   case 'p': { // Put/update a single key-value pair
-    keyvalues_t *curr = *head;
-    keyvalues_t *prev = NULL;
+    kv_t *curr = *head;
+    kv_t *prev = NULL;
 
     // Allocate and copy the value to the heap to ensure it persists.
     char *heap_value = strdup(value);
@@ -113,7 +145,7 @@ void dbmanager(keyvalues_t **head, const char *option, int key,
     }
 
     // Key does not exist, so insert a new node
-    keyvalues_t *node = malloc(sizeof(*node));
+    kv_t *node = malloc(sizeof(*node));
     if (!node) {
       perror("malloc failed");
       exit(EXIT_FAILURE);
@@ -122,42 +154,45 @@ void dbmanager(keyvalues_t **head, const char *option, int key,
     node->value = heap_value;
     node->next = NULL;
 
-    if (prev) {
-      node->next = prev->next;
-      prev->next = node;
-    } else { // Insert at the head
+    if (!prev) { // Prepend at the head
       node->next = *head;
       *head = node;
+    } else { // Insert in the list
+      node->next = prev->next;
+      prev->next = node;
     }
     break;
   }
   }
 }
+// =============================================================================
 
 /**
- * @brief Frees all memory allocated for the linked list.
- * * @param head A pointer to the head of the list.
+ * @brief Free all memory allocated for the key-value linked list.
+ *
+ * @param head Pointer to the head pointer of the list.
  */
-void free_db(keyvalues_t **head) {
-  keyvalues_t *curr = *head;
-  while (curr) {
-    keyvalues_t *temp = curr;
-    curr = curr->next;
-    free(temp->value);
-    free(temp);
+void free_db(kv_t **head) {
+  for (kv_t *curr = *head; curr; curr = *head) {
+    *head = curr->next;
+    free(curr->value);
+    free(curr);
   }
-  *head = NULL;
 }
-
 // =============================================================================
 // File I/O Functions
 // =============================================================================
+
 /**
- * @brief Loads the key-value store from a file.
- * * @param head A pointer to the head of the linked list.
- * @param filename The name of the database file.
+ * @brief Load the key-value store from a file.
+ *
+ * The file is expected to contain one key-value pair per line,
+ * formatted as "key,value".
+ *
+ * @param head     Pointer to the head pointer of the linked list.
+ * @param filename Path to the database file.
  */
-void load_db_from_file(keyvalues_t **head, const char *filename) {
+void load_db_from_file(kv_t **head, const char *filename) {
   FILE *db_fp = fopen(filename, "r");
   if (!db_fp) {
     // This is a normal condition if the file doesn't exist yet.
@@ -178,33 +213,55 @@ void load_db_from_file(keyvalues_t **head, const char *filename) {
       fclose(db_fp);
       exit(EXIT_FAILURE);
     }
+    char *ptr_cpy = linecpy; // Store the original pointer
 
     char *nptr = strsep(&linecpy, ",");
     char *value = strsep(&linecpy, ",");
 
     if (nptr && value) {
-      int key = atoi(nptr);
+      char *endptr = NULL;
+      errno = 0;
+      int key = (int)strtol(nptr, &endptr, 10);
+      if (errno == ERANGE || *endptr != '\0') {
+        fprintf(stderr, "Error: Database corrupted key '%s': %s", nptr,
+                strerror(errno));
+        free(line);
+        free(ptr_cpy);
+        // WARNING: STUDY CASE: How to thoroughly free memory before exit.
+        // This one still leaves one block behind.
+        free_db(head);
+        exit(EXIT_FAILURE);
+      }
+
       dbmanager(head, "p", key, value);
     }
-    free(linecpy);
+    free(ptr_cpy);
   }
   free(line);
   fclose(db_fp);
 }
+// -----------------------------------------------------------------------------
 
 /**
- * @brief Saves the key-value store to a file using a temporary file.
- * * @param head A pointer to the head of the linked list.
- * @param filename The name of the database file.
+ * @brief Save the key-value store to a file atomically.
+ *
+ * Writes to a temporary file first, then uses `rename()` to replace
+ * the old database. This ensures that the database is never corrupted
+ * by partial writes.
+ *
+ * If the database is empty, the target file is unlinked (removed).
+ *
+ * @param head     Pointer to the head pointer of the linked list.
+ * @param filename Path to the database file.
  */
-void save_db_to_file(keyvalues_t **head, const char *filename) {
+void save_db_to_file(kv_t **head, const char *filename) {
   if (!*head) {
     unlink(filename);
     return;
   }
 
   char temp_filename[256];
-  snprintf(temp_filename, sizeof(temp_filename), "/tmp/dbXXXXXX%s", filename);
+  snprintf(temp_filename, sizeof(temp_filename), "/tmp/kvXXXXXX%s", filename);
 
   int temp_fd = mkstemps(temp_filename, strlen(filename));
   if (temp_fd == -1) {
@@ -220,7 +277,7 @@ void save_db_to_file(keyvalues_t **head, const char *filename) {
     exit(EXIT_FAILURE);
   }
 
-  for (keyvalues_t *curr = *head; curr; curr = curr->next) {
+  for (kv_t *curr = *head; curr; curr = curr->next) {
     fprintf(temp_fp, "%d,%s\n", curr->key, curr->value);
   }
   fclose(temp_fp);
@@ -241,8 +298,15 @@ void save_db_to_file(keyvalues_t **head, const char *filename) {
     exit(EXIT_FAILURE);
   }
 }
-
 // =============================================================================
+// Utility Functions
+// =============================================================================
+
+/**
+ * @brief Print program usage instructions and exit.
+ *
+ * @param prog_name Name of the executable (argv[0]).
+ */
 void usage(const char *prog_name) {
   fprintf(stderr, "Usage: %s <option>,[key],[value]...\n", prog_name);
   fprintf(stderr, "  Options:\n");
@@ -255,16 +319,27 @@ void usage(const char *prog_name) {
 }
 
 // =============================================================================
-// Main and Argument Parsing
-// FIX: Memory leaks: run valgrind
+// Main Function
 // =============================================================================
+
+/**
+ * @brief Program entry point.
+ *
+ * Loads the key-value database from disk, applies operations specified
+ * in command-line arguments, saves the modified database back to disk,
+ * and frees memory.
+ *
+ * @param argc Argument count.
+ * @param argv Argument vector.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 int main(int argc, char *argv[]) {
   // TEST: for test 1 comment out all the if close.
   if (argc < 2) {
     usage(argv[0]);
   }
 
-  keyvalues_t *dbhead = NULL;
+  kv_t *dbhead = NULL;
   const char *filename = "database.txt";
 
   // Load the existing database from file.
@@ -278,6 +353,7 @@ int main(int argc, char *argv[]) {
       free_db(&dbhead);
       exit(EXIT_FAILURE);
     }
+    char *ptr_cpy = arg_copy; // Store the original pointer
 
     char *option = strsep(&arg_copy, ",");
     char *nptr = strsep(&arg_copy, ",");
@@ -286,7 +362,7 @@ int main(int argc, char *argv[]) {
 
     if (!option) {
       fprintf(stderr, "Missing option at argument %d.\n", i);
-      free(arg_copy);
+      free(ptr_cpy);
       continue;
     }
 
@@ -295,7 +371,7 @@ int main(int argc, char *argv[]) {
     if (!strchr(valid_opts, option[0]) || strlen(option) != 1) {
       fprintf(stderr, "Bad option '%s' at argument %d. Must be one of: %s\n",
               option, i, valid_opts);
-      free(arg_copy);
+      free(ptr_cpy);
       continue;
     }
 
@@ -303,7 +379,7 @@ int main(int argc, char *argv[]) {
     if (option[0] != 'a' && option[0] != 'c') {
       if (!nptr) {
         fprintf(stderr, "Missing key at argument %d.\n", i);
-        free(arg_copy);
+        free(ptr_cpy);
         continue;
       }
       char *endptr = NULL;
@@ -311,7 +387,7 @@ int main(int argc, char *argv[]) {
       key = (int)strtol(nptr, &endptr, 10);
       if (errno == ERANGE || *endptr != '\0') {
         fprintf(stderr, "Invalid key '%s' at argument %d.\n", nptr, i);
-        free(arg_copy);
+        free(ptr_cpy);
         continue;
       }
     }
@@ -319,12 +395,12 @@ int main(int argc, char *argv[]) {
     // Validate value for put option
     if (option[0] == 'p' && !value) {
       fprintf(stderr, "Missing value at argument %d for 'p' option.\n", i);
-      free(arg_copy);
+      free(ptr_cpy);
       continue;
     }
 
     dbmanager(&dbhead, option, key, value);
-    free(arg_copy);
+    free(ptr_cpy);
   }
 
   // Save the modified database to the file.

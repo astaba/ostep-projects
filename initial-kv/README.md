@@ -204,3 +204,46 @@ make a copy into the file `kv.v1.c`. More sophisticated
 developers use version control systems such as git; such a tool is
 well worth learning, so do it! 
 
+## `strdup()` and `strsep()`: Watch out for memory leaks
+
+That's an excellent diagnosis. You've correctly identified the memory
+leak and the reason behind it. It's a very common pitfall with `strsep()`
+because it modifies the pointer it's given, causing you to lose the
+original address allocated by `strdup()`. Using a temporary pointer like
+`ptr_cpy` is a perfect and safe solution.
+
+---
+
+### Modifying `argv` Directly
+
+You've hit on a fascinating and subtle point in C programming. Is it
+safe to call `strsep()` directly on `argv[i]`?
+
+The short answer is **yes, it is safe in this specific case, but it's
+generally not considered good practice**.
+
+The C standard guarantees that the strings pointed to by `argv` are
+**writable**. This means that using a function like `strsep()`, which
+inserts a null terminator (`\0`) into the string, will technically work
+without causing a segmentation fault. Since the `main` function is the
+owner of the `argv` array, and the program is about to exit, there are
+no long-term side effects to worry about.
+
+However, the reason programmers almost always prefer using `strdup()`
+and a temporary variable is for **robustness and clarity**.
+
+* **Isolation:** The `strdup()` call creates an independent copy of the
+argument string. This ensures that you are only modifying your own local
+data, and you are not affecting the `argv` array itself.
+* **Predictability:** It avoids potential side effects. While this program
+works, a more complex program might pass `argv` to another function that
+expects the original, unmodified strings.
+* **Best Practice:** It's the idiomatic C way to handle this. You take
+responsibility for the memory you allocate (`strdup`) and you free it
+when you are done. The `argv` array is owned by the C runtime, and it's
+cleaner to leave it in its original state.
+
+So while your alternative solution is memory-safe for this program, the
+version you implemented with `ptr_cpy` is the more robust, professional
+approach. It clearly separates the input data from the working data.
+

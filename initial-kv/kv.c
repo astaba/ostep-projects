@@ -133,11 +133,10 @@ int main(int argc, char *argv[]) {
   // ---------------------------------------------------------------------------
   char *filename = "database.txt";
   FILE *db_fp = fopen(filename, "r");
-  if (!db_fp) {
-    // FIX: Improve this notification
-    perror("Database was empty");
-    // exit(EXIT_FAILURE);
-  } else {
+  /* if (!db_fp) {
+    // This is a normal condition: fail silently
+  } else { */
+  if (db_fp) {
     // ---------------------------------------------------------------------------
     char buffer[BUFSIZ];
     char *line = NULL;
