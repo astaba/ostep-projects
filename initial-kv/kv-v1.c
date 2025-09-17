@@ -16,6 +16,7 @@
 // Build: gcc -Wall -Wextra -pedantic -std=c11 -o kvstore kvstore.c
 // Usage: ./kvstore <option>,[key],[value]...
 // Example: ./kvstore p,1,hello g,1
+// ./kv p,23,alpha p,87,bravo p,45,charlie p,89,delta p,60,echo
 // =============================================================================
 
 #include <errno.h>
@@ -117,8 +118,8 @@ void dbmanager(kv_t **head, const char *option, int key, const char *value) {
     if (curr) {
       printf("%d,%s\n", curr->key, curr->value);
     } else {
-      fprintf(stderr, "%d not found.\n", key);
-      /* // TEST: for test 3
+      fprintf(stderr, "%d not found\n", key);
+      /* // TEST: for test 3 of ostep-projects
       printf("%d not found\n", key); */
     }
     break;
@@ -223,8 +224,7 @@ void load_db_from_file(kv_t **head, const char *filename) {
       errno = 0;
       int key = (int)strtol(nptr, &endptr, 10);
       if (errno == ERANGE || *endptr != '\0') {
-        fprintf(stderr, "Error: Database corrupted key '%s': %s", nptr,
-                strerror(errno));
+        fprintf(stderr, "Error: Database corrupted at key '%s'\n", nptr);
         free(line);
         free(ptr_cpy);
         // WARNING: STUDY CASE: How to thoroughly free memory before exit.
@@ -334,7 +334,7 @@ void usage(const char *prog_name) {
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */
 int main(int argc, char *argv[]) {
-  // TEST: for test 1 comment out all the if close.
+  // TEST: for test 1 of ostep-projects comment out all the if close.
   if (argc < 2) {
     usage(argv[0]);
   }
