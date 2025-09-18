@@ -1,0 +1,7 @@
+# Ignore the executable.
+wish
+
+# Ignore the user's local configuration file.
+# This file contains settings specific to a single user's environment.
+# It should not be shared across different developer systems.
+.wishrc
