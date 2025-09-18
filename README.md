@@ -108,24 +108,24 @@ and install the tools you'll need.
 ```bash
 tree -d -L 1
 .
-├── 9.  concurrency-mapreduce
+├── 1.  initial-utilities            (done)
+├── 2.  initial-reverse              (done)
+├── 3.  initial-kv                   (done)
+├── 4.  initial-memcached
+├── 5.  processes-shell
 ├── 6.  concurrency-pzip
 ├── 7.  concurrency-sort
 ├── 8.  concurrency-webserver
+├── 9.  concurrency-mapreduce
+├── 10. initial-xv6
+├── 11. initial-xv6-tracer
+├── 12. vm-xv6-intro
 ├── 13. concurrency-xv6-threads
+├── 14. scheduling-xv6-lottery
 ├── 15. filesystems-checker
 ├── 16. filesystems-distributed
 ├── 17. filesystems-distributed-ufs
-├── 3.  initial-kv                   (done)
-├── 4.  initial-memcached
-├── 2.  initial-reverse              (done)
-├── 1.  initial-utilities            (done)
-├── 10. initial-xv6
-├── 11. initial-xv6-tracer
-├── 5.  processes-shell
-├── 14. scheduling-xv6-lottery
-├── tester
-└── 12. vm-xv6-intro
+└── tester
 
 19 directories
 ```
