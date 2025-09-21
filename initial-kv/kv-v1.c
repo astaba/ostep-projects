@@ -207,17 +207,11 @@ void load_db_from_file(kv_t **head, const char *filename) {
 
   while ((read_bytes = getline(&line, &len, db_fp)) != -1) {
     line[strcspn(line, "\n")] = '\0';
-    char *linecpy = strdup(line);
-    if (!linecpy) {
-      perror("strdup failed");
-      free(line);
-      fclose(db_fp);
-      exit(EXIT_FAILURE);
-    }
-    char *ptr_cpy = linecpy; // Store the original pointer
+    // Store the original pointer
+    char *ptr_cpy = line;
 
-    char *nptr = strsep(&linecpy, ",");
-    char *value = strsep(&linecpy, ",");
+    char *nptr = strsep(&ptr_cpy, ",");
+    char *value = strsep(&ptr_cpy, ",");
 
     if (nptr && value) {
       char *endptr = NULL;
@@ -226,7 +220,6 @@ void load_db_from_file(kv_t **head, const char *filename) {
       if (errno == ERANGE || *endptr != '\0') {
         fprintf(stderr, "Error: Database corrupted at key '%s'\n", nptr);
         free(line);
-        free(ptr_cpy);
         // WARNING: STUDY CASE: How to thoroughly free memory before exit.
         // This one still leaves one block behind.
         free_db(head);
@@ -235,7 +228,6 @@ void load_db_from_file(kv_t **head, const char *filename) {
 
       dbmanager(head, "p", key, value);
     }
-    free(ptr_cpy);
   }
   free(line);
   fclose(db_fp);
