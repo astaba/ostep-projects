@@ -111,8 +111,8 @@ tree -d -L 1
 ├── 1.  initial-utilities            (done)
 ├── 2.  initial-reverse              (done)
 ├── 3.  initial-kv                   (done)
-├── 4.  initial-memcached
-├── 5.  processes-shell
+├── 4.  initial-memcached            (pending...)
+├── 5.  processes-shell              (pending...)
 ├── 6.  concurrency-pzip
 ├── 7.  concurrency-sort
 ├── 8.  concurrency-webserver
