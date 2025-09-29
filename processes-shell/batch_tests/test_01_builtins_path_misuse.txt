@@ -1,0 +1,12 @@
+exit 1 2 3
+cd /tmp /etc
+path
+path /bin /usr/bin
+nonexistentcmd
+path /tmp
+ls
+path
+ls
+path /bin
+ls
+exit

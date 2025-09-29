@@ -1,0 +1,5 @@
+path /bin /usr/bin
+ls -l
+ls -a & cd /tmp & ls -l > tmp_listing.txt
+ls -a > final_output.txt
+exit

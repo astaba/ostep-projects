@@ -1,0 +1,7 @@
+cd /tmp & cd /etc /var
+path /tmp
+ls & nonexistentcmd
+path /bin
+notifier title wish & ls -l > file1 > file2
+ls -l & & cd /tmp
+

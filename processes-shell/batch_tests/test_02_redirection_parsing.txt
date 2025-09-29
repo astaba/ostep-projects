@@ -1,0 +1,7 @@
+ls -l > file1 > file2 
+ls -l > 
+ls -l > file1 file2 file3 
+cd /home > dir.txt  
+exit > exit.log  
+path /bin
+ls -l > redirection_success.log
