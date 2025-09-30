@@ -1,5 +1,6 @@
 /* ostep-projects/processes-shell/wish.c */
-// Crated on: Thu Sep 18 15:14:14 +01 2025
+// Created on:   Thu Sep 18 15:14:14 +01 2025
+// Completed on: Tue Sep 30 18:38:56 +01 2025
 // INFO: Usage: This 'wish' shell default path holds "/bin" directory.
 // Without custom path only three builtins commands are available:
 // path, cd, exit.
@@ -113,7 +114,6 @@ int main(int argc, char *argv[argc + 1]) {
       // Advance the token pointer passed any leading whitespaces
       // Then check for empty cmds and dump them before jumping the next cmd.
       if (trim_whitespaces(&cmd_token) == EXIT_FAILURE) {
-        /* print_err_msg(); */
         continue;
       }
 
@@ -188,8 +188,10 @@ int main(int argc, char *argv[argc + 1]) {
       char *redirect_path = NULL;
 
       while ((arg_token = strsep(&cmdptr_cpy, "\t "))) {
+        // Ignore consecutive whitespaces within commands.
         if (!*arg_token)
           continue;
+
         while ((sub_token = strsep(&arg_token, ">"))) {
 
           if (!chevron_onwards) {
