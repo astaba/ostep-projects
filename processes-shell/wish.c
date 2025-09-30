@@ -1,18 +1,17 @@
 /* ostep-projects/processes-shell/wish.c */
 // Crated on: Thu Sep 18 15:14:14 +01 2025
-// INFO: Usage:
-// Without custom path only the three builtins cmds are available:
+// INFO: Usage: This 'wish' shell default path holds "/bin" directory.
+// Without custom path only three builtins commands are available:
 // path, cd, exit.
-// To fully enjoy the wish shell it is recommended to initialize its custom
-// path with the /bin directory:
-// wish> path /bin
-// Any subsequent path cmd call should either clear the custom path or
-// overwrite it like:
-// wish> path /bin /usr/bin /home/owner/bin
+// Any call to the path cmd should either clear the custom path:
+// wish> path
+// or overwrite it:
+// wish> path /usr/bin /home/owner/bin
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
+#include <linux/limits.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -36,45 +35,63 @@ void print_err_msg(void) {
   write(STDERR_FILENO, error_message, strlen(error_message));
 }
 
+int trim_whitespaces(char **token) {
+  *token += strspn(*token, " \t");
+  int len = strlen(*token);
+  char *end = *token + len - 1;
+  while (end > *token && (*end == ' ' || *end == '\t')) {
+    *end = '\0';
+    end--;
+  }
+
+  if (!*(*token))
+    return EXIT_FAILURE;
+
+  return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[argc + 1]) {
   // INFO: If the shell is invoked with more than one file:
   // throw exception and exit(1)
   if (argc > 2) {
-    fprintf(
-        stderr,
-        "ERROR: Too much arguments.\n\n"
-        "Usage:\n\t%s [batch_file]\n\n"
-        "The unique optional argument is a batch file containing the command\n"
-        "to run before exit. Without argument run the shell in interactive\n"
-        "mode entering command on the prompt. To exit press CTRL-D.\n\n",
-        argv[0]);
+    print_err_msg();
     exit(EXIT_FAILURE);
   }
-  FILE *input_fp = stdin;
+
   bool batch_mode = false;
-  char **dynampaths = NULL;
-  size_t path_nbr = 0;
+  FILE *input_fp = stdin;
 
   if (argv[1]) {
     input_fp = fopen(argv[1], "r");
     if (!input_fp) {
-      fprintf(stderr, "wish: failed to open '%s': %s\n", argv[1],
-              strerror(errno));
+      print_err_msg();
       exit(EXIT_FAILURE);
     }
-    // TODO: In batch mode any format error of cmd in the batch file
-    // should trigger  exception and exit(1)
     batch_mode = true;
   }
 
   char *line = NULL;
   size_t len = 0;
+  char **dynampaths_pp = NULL;
+
+  // Set initial default path to "/bin"
+  if (!(dynampaths_pp = calloc(2, sizeof(char *)))) {
+    perror("calloc() failed");
+    if (batch_mode)
+      fclose(input_fp);
+
+    exit(EXIT_FAILURE);
+  }
+  dynampaths_pp[0] = strdup("/bin");
+  dynampaths_pp[1] = NULL;
+
+  signal(SIGINT, SIG_IGN);
+
   while (1) {
     if (!batch_mode) {
       printf("wish> "); // Display prompt
-    } else {
-      puts(""); // Space line of commands
     }
+
     ssize_t nread = getline(&line, &len, input_fp);
     if (nread == -1) { // Terminate wish shell
       break;
@@ -82,137 +99,153 @@ int main(int argc, char *argv[argc + 1]) {
 
     line[strcspn(line, "\n")] = '\0'; // Make the input a C standard string
 
-    if (batch_mode) // In batch mode feedback the line of commands
-      printf("%s\n", line);
-
     // WARNING: Make sure to perform memory cleanup required by the scope
     // before jumping to next command(s).
 
-    // Right after reading one input line search parallel commands (&).
-    char **dynamcmds = NULL; // The commands table
-    // The number of cmds in the cmds table ignoring the terminating NULL
-    size_t cmds_nbr = 0;
     char *lineptr_cpy = line;
     char *cmd_token = NULL;
+    // Right after reading one input line search parallel commands (&).
+    char **dynamcmds_pp = NULL; // The commands table
+    // The number of cmds in the cmds table ignoring the terminating NULL
+    size_t cmds_nbr = 0;
+
     while ((cmd_token = strsep(&lineptr_cpy, "&"))) {
-      // FIX: Make sure to strip away empty lines and invisible characters in
-      // the initial part of tokens.
-      int empty_len = strspn(cmd_token, " \t\n");
-      if (empty_len) {
-        cmd_token += empty_len;
-      }
-      if (!strlen(cmd_token)) { // input line includes "&&"
-        print_err_msg();
+      // Advance the token pointer passed any leading whitespaces
+      // Then check for empty cmds and dump them before jumping the next cmd.
+      if (trim_whitespaces(&cmd_token) == EXIT_FAILURE) {
+        /* print_err_msg(); */
         continue;
       }
-      char *tmp = realloc(dynamcmds, sizeof(char *) * (cmds_nbr + 2));
+
+      char *tmp = realloc(dynamcmds_pp, sizeof(char *) * (cmds_nbr + 2));
       if (!tmp) {
         perror("realloc() failed");
-        dynamcmds = cleanup_pp_dynamarray(dynamcmds);
+        dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
         free(line);
         exit(EXIT_FAILURE);
       } else {
-        dynamcmds = (char **)tmp;
+        dynamcmds_pp = (char **)tmp;
       }
 
-      dynamcmds[cmds_nbr] = strdup(cmd_token);
-      if (!dynamcmds[cmds_nbr]) {
+      dynamcmds_pp[cmds_nbr] = strdup(cmd_token);
+      if (!dynamcmds_pp[cmds_nbr]) {
         perror("strdup() failed");
-        dynamcmds = cleanup_pp_dynamarray(dynamcmds);
+        dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
         free(line);
         exit(EXIT_FAILURE);
       }
       cmds_nbr++;
-      dynamcmds[cmds_nbr] = NULL;
+      dynamcmds_pp[cmds_nbr] = NULL;
     }
 
-    if (!dynamcmds)
+    if (!dynamcmds_pp)
       continue;
     // WARNING: Confirm cmds table exists before entering next loop
 
-    for (size_t i = 0; dynamcmds[i]; i++) {
+    // Implement paralell commands logic premices.
+    // Declare a process id set to collect processes ids.
+    pid_t *pids_p = calloc(cmds_nbr, sizeof(pid_t *));
+    if (!pids_p) {
+      perror("calloc() failed");
+      dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+      free(line);
+      exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; dynamcmds_pp[i]; i++) {
       // Count the number of '>' characters in the input cmd and turn on the
       // redirected flag if any.
       bool redirected = false;
-      char *char_ptr = dynamcmds[i];
-      size_t chevron_count = 0;
-      while ((char_ptr = strchr(char_ptr, 0x3E))) {
-        char_ptr++;
-        chevron_count++;
-      }
+      size_t chevron_count = ({
+        char *s = dynamcmds_pp[i];
+        size_t n = 0;
+        while ((s = strchr(s, '>'))) {
+          n++;
+          s++;
+        }
+        n;
+      });
       // In case of formatting error involving multiple '>' characters in the
       // input cmd ignore the cmd and jump to next cmd.
-      if (chevron_count > 1) {
+      if (chevron_count > 1 || strspn(dynamcmds_pp[i], ">")) {
         print_err_msg();
         continue; // Skip this cmd and go to next cmd in the cmds table
       } else if (chevron_count) {
         redirected = true;
       }
 
-      // Parse out actual cmd and optional arguments within an input cmd.
-      char **dynamargs = NULL; // Table of cmd elements: cmd [args ...] [> file]
-      // Number of elements in the arguments table ignoring the terminating NULL
-      size_t args_nbr = 0;
+      char *cmdptr_cpy = dynamcmds_pp[i];
       char *arg_token = NULL;
-      char *cmdptr_cpy = dynamcmds[i];
+      char *sub_token = NULL;
       // Numbers of elements (args) from redirection '>' (including) onwards.
       size_t chevron_onwards = 0;
+      // Parse out actual cmd and optional arguments within an input cmd.
+      char **dynamargs_pp =
+          NULL; // Table of cmd elements: cmd [args ...] [> file]
+      // Number of elements in the arguments table ignoring the terminating NULL
+      size_t args_nbr = 0;
       // Hypothetic unique argument following the redirection '>'
       char *redirect_path = NULL;
 
       while ((arg_token = strsep(&cmdptr_cpy, "\t "))) {
-        if (!strlen(arg_token))
+        if (!*arg_token)
           continue;
+        while ((sub_token = strsep(&arg_token, ">"))) {
 
-        if (!chevron_onwards) {
-          if (!strcmp(arg_token, ">")) {
-            // Throw away the chevron and jump to the next argument
-            chevron_onwards = 1;
-            continue;
-          }
+          if (!chevron_onwards) {
+            if (arg_token) {
+              chevron_onwards = 1;
+            }
 
-          char *tmp = realloc(dynamargs, sizeof(char *) * (args_nbr + 2));
-          if (!tmp) {
-            perror("realloc() failed");
-            dynamargs = cleanup_pp_dynamarray(dynamargs);
-            dynamcmds = cleanup_pp_dynamarray(dynamcmds);
-            free(line);
-            exit(EXIT_FAILURE);
-          } else {
-            dynamargs = (char **)tmp;
-          }
-          dynamargs[args_nbr] = strdup(arg_token);
-          if (!dynamargs[args_nbr]) {
-            perror("strdup() failed");
-            dynamargs = cleanup_pp_dynamarray(dynamargs);
-            dynamcmds = cleanup_pp_dynamarray(dynamcmds);
-            free(line);
-            exit(EXIT_FAILURE);
-          }
-          args_nbr++;
-          dynamargs[args_nbr] = NULL;
-        } else {
-          if (chevron_onwards == 1) {
-            redirect_path = strdup(arg_token);
-            if (!redirect_path) {
+            char *tmp = realloc(dynamargs_pp, sizeof(char *) * (args_nbr + 2));
+            if (!tmp) {
+              perror("realloc() failed");
+              dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+              dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+              free(pids_p);
+              free(line);
+              exit(EXIT_FAILURE);
+            } else {
+              dynamargs_pp = (char **)tmp;
+            }
+            dynamargs_pp[args_nbr] = strdup(sub_token);
+            if (!dynamargs_pp[args_nbr]) {
               perror("strdup() failed");
-              dynamargs = cleanup_pp_dynamarray(dynamargs);
-              dynamcmds = cleanup_pp_dynamarray(dynamcmds);
+              dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+              dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+              free(pids_p);
               free(line);
               exit(EXIT_FAILURE);
             }
+            args_nbr++;
+            dynamargs_pp[args_nbr] = NULL;
+          } else if (*sub_token) {
+            if (chevron_onwards == 1) {
+              redirect_path = strdup(sub_token);
+              if (!redirect_path) {
+                perror("strdup() failed");
+                dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+                dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+                free(pids_p);
+                free(line);
+                exit(EXIT_FAILURE);
+              }
+            }
+            chevron_onwards++;
           }
-          chevron_onwards++;
         }
       }
 
-      // In case of formatting error involving more than one argument after the
-      // redirection input cmd cleanup the cmd and jump to next cmd.
+      // In case of formatting error involving either no argument or more than
+      // one argument after the redirection input or trying to redirect a
+      // builtin command, cmd cleanup the cmd and jump to next cmd.
       if (redirected) {
-        if (chevron_onwards == 1 || chevron_onwards > 2 ||
-            strstr("pathcdexit", dynamargs[0])) {
+        bool is_builtin = !strcmp(dynamargs_pp[0], "path") ||
+                          !strcmp(dynamargs_pp[0], "cd") ||
+                          !strcmp(dynamargs_pp[0], "exit");
+        if (chevron_onwards == 1 || chevron_onwards > 2 || is_builtin) {
           print_err_msg();
-          dynamargs = cleanup_pp_dynamarray(dynamargs);
+          dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
           free(redirect_path);
           continue; // Skip this cmd and jump to next cmd in cmds table
         }
@@ -221,150 +254,173 @@ int main(int argc, char *argv[argc + 1]) {
       if (!redirected) {
         // INFO: The shell has its own builtins cmd implemented through
         // syscalls: path, cd and exit.
-        if (!strcmp(dynamargs[0], "exit")) {
+        if (!strcmp(dynamargs_pp[0], "exit")) {
           if (args_nbr > 1) {
             print_err_msg();
-            dynamargs = cleanup_pp_dynamarray(dynamargs);
+            dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
             continue; // Jump to next parallel cmd.
           } else {
             // WARNING: Cleanup dynampaths ???
-            dynamargs = cleanup_pp_dynamarray(dynamargs);
-            dynamcmds = cleanup_pp_dynamarray(dynamcmds);
+            dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+            dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+            free(pids_p);
             free(line);
-            dynampaths = cleanup_pp_dynamarray(dynampaths);
+            dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
             if (batch_mode)
               fclose(input_fp);
             exit(EXIT_SUCCESS);
           }
-        } else if (!strcmp(dynamargs[0], "cd")) {
+        } else if (!strcmp(dynamargs_pp[0], "cd")) {
           if (args_nbr != 2) {
             print_err_msg();
           } else {
-            if (chdir(dynamargs[1]) == -1) {
+            if (chdir(dynamargs_pp[1]) == -1) {
               perror("wish cd");
             }
           }
-          dynamargs = cleanup_pp_dynamarray(dynamargs);
+          dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
           continue; // Jump to next parallel cmd.
 
-        } else if (!strcmp(dynamargs[0], "path")) {
-          // TODO: The user should able to clear the path.
+        } else if (!strcmp(dynamargs_pp[0], "path")) {
           if (args_nbr < 2) {
-            print_err_msg();
+            // Clearing the path with the simple: wish> path
+            dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
           } else {
-            if (dynampaths) { // Purge path before updating it
-              dynampaths = cleanup_pp_dynamarray(dynampaths);
-              path_nbr = 0;
-            }
-            dynampaths = malloc(sizeof(char *) * args_nbr);
-            if (!dynampaths) {
-              perror("malloc() failed");
-              dynamargs = cleanup_pp_dynamarray(dynamargs);
-              dynamcmds = cleanup_pp_dynamarray(dynamcmds);
+            dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
+            dynampaths_pp = calloc(args_nbr, sizeof(char *));
+            if (!dynampaths_pp) {
+              perror("calloc() failed");
+              dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+              dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+              free(pids_p);
               free(line);
               // WARNING: In batch mode cleanup input_fp before exit
               exit(EXIT_FAILURE);
             }
-            for (size_t i = 0; i < (args_nbr - 1); i++) {
-              dynampaths[i] = strdup(dynamargs[i + 1]);
-              if (!dynampaths[i]) {
+            for (size_t j = 0; j < (args_nbr - 1); j++) {
+              dynampaths_pp[j] = strdup(dynamargs_pp[j + 1]);
+              if (!dynampaths_pp[j]) {
                 perror("strdup failed");
-                dynamargs = cleanup_pp_dynamarray(dynamargs);
-                dynamcmds = cleanup_pp_dynamarray(dynamcmds);
-                dynampaths = cleanup_pp_dynamarray(dynampaths);
+                dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+                dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+                free(pids_p);
+                dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
                 free(line);
                 exit(EXIT_FAILURE);
               }
             }
-            path_nbr = args_nbr - 1;
-            dynampaths[path_nbr] = NULL;
-            // DEBUG
-            for (size_t i = 0; dynampaths[i]; i++) {
-              printf("path[%zu]: %s\n", i, dynampaths[i]);
-            }
+            dynampaths_pp[args_nbr - 1] = NULL;
           }
-          dynamargs = cleanup_pp_dynamarray(dynamargs);
+          dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
           continue; // Jump to next parallel cmd.
         } // if cmd0 == path
       } // if not redirected
 
-      // If no path: run only builtins cmd.
-      if (dynampaths) {
-        // Check dynamargs[0] exists in one of the path directories, using the
-        // access() system call. Only then, update dynamargs[0] to the relevant
-        // fully qualified path and use execv() in the child process (no more
-        // execvp()).
-        bool in_path = false;
-        for (size_t i = 0; i < path_nbr; i++) {
-          char pathname[256];
-          snprintf(pathname, 256, "%s/%s", dynampaths[i], dynamargs[0]);
-          if (!access(pathname, X_OK)) {
-            free(dynamargs[0]);
-            dynamargs[0] = strdup(pathname);
-            in_path = true;
-            break;
+      // Check dynamargs[0] exists in one of the path directories
+      bool in_path = false;
+      for (size_t i = 0; dynampaths_pp && dynampaths_pp[i]; i++) {
+        char pathname[PATH_MAX];
+        snprintf(pathname, PATH_MAX, "%s/%s", dynampaths_pp[i],
+                 dynamargs_pp[0]);
+        if (!access(pathname, X_OK)) {
+          free(dynamargs_pp[0]);
+          dynamargs_pp[0] = strdup(pathname);
+          in_path = true;
+          break;
+        }
+      }
+      // If the cmd arg not in paths: throw error and proceed to shell prompt.
+      if (!in_path) {
+        print_err_msg();
+        dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+        free(redirect_path);
+        continue;
+      }
+
+      pid_t rc = fork();
+      if (rc == -1) {
+        perror("fork() failed");
+        dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+        free(redirect_path);
+        dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+        free(pids_p);
+        dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
+        free(line);
+        if (batch_mode)
+          fclose(input_fp);
+        exit(EXIT_FAILURE);
+
+      } else if (rc == 0) { // Child process
+        // Implement redirection
+        if (redirected) {
+          int fd = open(redirect_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+                        S_IRUSR | S_IWUSR | S_IROTH | S_IRGRP);
+          if (fd == -1) {
+            perror("open redirect failed");
+            dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+            free(redirect_path);
+            dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+            free(pids_p);
+            dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
+            free(line);
+            if (batch_mode)
+              fclose(input_fp);
+            exit(EXIT_FAILURE);
           }
-        }
-        // INFO: If the cmd arg is not in any paths:
-        // throw error and proceed to the shell prompt.
-        if (!in_path) {
-          print_err_msg();
-          dynamargs = cleanup_pp_dynamarray(dynamargs);
-          free(redirect_path);
-          continue;
-        }
 
-        pid_t rc = fork();
-        if (rc == -1) {
-          perror("fork() failed");
-          dynamargs = cleanup_pp_dynamarray(dynamargs);
-          free(redirect_path);
-          dynamcmds = cleanup_pp_dynamarray(dynamcmds);
-          dynampaths = cleanup_pp_dynamarray(dynampaths);
-          free(line);
-          exit(EXIT_FAILURE);
-
-        } else if (rc == 0) { // Child process
-          // ------------------------------------------------------------
-          // Implement redirection
-          if (redirected) {
-            int fd = open(redirect_path, O_WRONLY | O_CREAT | O_TRUNC,
-                          S_IRUSR | S_IWUSR | S_IROTH | S_IRGRP);
-            dup2(fd, STDOUT_FILENO);
-            dup2(fd, STDERR_FILENO);
-            close(fd);
+          if (dup2(fd, STDOUT_FILENO) == -1 || dup2(fd, STDERR_FILENO) == -1) {
+            perror("dup2 failed");
+            dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+            free(redirect_path);
+            dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+            free(pids_p);
+            dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
+            free(line);
+            if (batch_mode)
+              fclose(input_fp);
+            exit(EXIT_FAILURE);
           }
-          // ------------------------------------------------------------
-          execv(dynamargs[0], dynamargs);
-          // We free the memory we allocated only if execv() fails.
-          // All elements but the last (char *)NULL where allocated with
-          // strdup()
-          perror("execv() failed to execute");
-          dynamargs = cleanup_pp_dynamarray(dynamargs);
-          free(redirect_path);
-          dynamcmds = cleanup_pp_dynamarray(dynamcmds);
-          dynampaths = cleanup_pp_dynamarray(dynampaths);
-          free(line);
-          exit(EXIT_FAILURE);
-          // ------------------------------------------------------------
-        } else { // Parent process
-          pid_t wpid = waitpid(rc, NULL, 0);
-          // DEBUG
-          assert(rc == wpid);
+          close(fd);
         }
-      } // if(dynampaths)
+        // ------------------------------------------------------------
+        // Restore (Ctrl-C)
+        signal(SIGINT, SIG_DFL);
+        // ------------------------------------------------------------
+        execv(dynamargs_pp[0], dynamargs_pp);
+        // We free the memory we allocated only if execv() fails.
+        // All elements but the last (char *)NULL where allocated with
+        // strdup()
+        perror("execv() failed to execute");
+        dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
+        free(redirect_path);
+        dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
+        free(pids_p);
+        dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
+        free(line);
+        _exit(EXIT_FAILURE);
+        // ------------------------------------------------------------
+      } else { // Parent process
+        // Collect processes ids and let the for(dynamcmds_pp[i])loop run
+        // parallel commands in parallel.
+        pids_p[i] = rc;
+      }
 
-      dynamargs = cleanup_pp_dynamarray(dynamargs);
+      dynamargs_pp = cleanup_pp_dynamarray(dynamargs_pp);
       free(redirect_path);
-    } // for each dynam_parllcmds[i];
+    } // for each cmd in the cmds table
 
+    // Wait for all parallel commands to complete
+    for (size_t i = 0; i < cmds_nbr; i++) {
+      if (pids_p[i] > 0)
+        waitpid(pids_p[i], NULL, 0);
+    }
+    free(pids_p);
     // After all processes are done return control to the user through
     // the shell prompt or if in batch mode proceed to the next line if any.
-    dynamcmds = cleanup_pp_dynamarray(dynamcmds);
-
+    dynamcmds_pp = cleanup_pp_dynamarray(dynamcmds_pp);
   } // infinite shell loop
 
-  dynampaths = cleanup_pp_dynamarray(dynampaths);
+  dynampaths_pp = cleanup_pp_dynamarray(dynampaths_pp);
   free(line);
   if (batch_mode) {
     fclose(input_fp);
