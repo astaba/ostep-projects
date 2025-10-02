@@ -12,7 +12,7 @@ DBGFLAGS := -g3 -O0 -DDEBUG
 # ==============================================================================
 # HACK: Add more sources and use the $(word <no>,$(...)) syntax by
 # changing the <no> on the MAINTARGET recipe to build from different sources
-SRCS       := wish.c
+SRCS       := wish.c wish-v2.c
 MAINTARGET := $(subst .c,,$(word 1,$(SRCS)))
 ELFS       := $(subst .c,.out,$(filter-out $(word 1,$(SRCS)),$(SRCS)))
 # ==============================================================================
@@ -20,7 +20,7 @@ ELFS       := $(subst .c,.out,$(filter-out $(word 1,$(SRCS)),$(SRCS)))
 all: $(MAINTARGET) $(ELFS)
 
 # ==============================================================================
-$(MAINTARGET): $(word 1,$(SRCS))
+$(MAINTARGET): $(word 2,$(SRCS))
 	$(CC) $(CFLAGS) $(DBGFLAGS) $< -o $@
 
 $(ELFS): %.out: %.c
@@ -33,4 +33,5 @@ test: $(MAINTARGET)
 # ==============================================================================
 clean:
 	rm -fv $(MAINTARGET) *.out
-	rm -rf ./tests-out
+	rm -fv ./redirection_success.log ./batch.txt
+	rm -rf ./tests-out ./valgrind_logs/
