@@ -11,9 +11,9 @@
  * wzip.c - Simple file compressor using run-length encoding (RLE).
  *
  * This program reads one or more files specified as command-line arguments,
- * compresses their contents using run-length encoding, and writes the compressed
- * output to stdout. Each run of consecutive identical bytes is replaced by a
- * 4-byte count (uint32_t) followed by the byte value (uint8_t).
+ * compresses their contents using run-length encoding, and writes the
+ * compressed output to stdout. Each run of consecutive identical bytes is
+ * replaced by a 4-byte count (uint32_t) followed by the byte value (uint8_t).
  *
  * Usage:
  *   wzip file1 [file2 ...]

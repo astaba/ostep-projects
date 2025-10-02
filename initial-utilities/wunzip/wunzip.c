@@ -2,7 +2,6 @@
 // Created on: Sun Sep  7 17:50:57 +01 2025
 
 #include <errno.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,10 +43,10 @@ int main(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
     }
 
-    uint32_t count;
-    uint8_t ascii;
-    while (fread(&count, sizeof(uint32_t), 1, fp) == 1) {
-      if (fread(&ascii, sizeof(uint8_t), 1, fp) != 1) {
+    unsigned int count;
+    unsigned char ascii;
+    while (fread(&count, sizeof(unsigned int), 1, fp) == 1) {
+      if (fread(&ascii, sizeof(unsigned char), 1, fp) != 1) {
         fprintf(stderr, "wunzip: corrupted input from '%s': %s\n", argv[i],
                 strerror(errno));
         exit(EXIT_FAILURE);

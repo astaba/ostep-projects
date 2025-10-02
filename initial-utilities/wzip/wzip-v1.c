@@ -2,7 +2,6 @@
 // Created on: Sun Sep  7 16:58:37 +01 2025
 
 #include <errno.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +14,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  uint32_t count = 0;
+  unsigned int count = 0;
   int prev_char = -1;
   int curr_char;
   // We are to parse each argument files, encoding each character to an 4-byte
@@ -46,11 +45,11 @@ int main(int argc, char *argv[]) {
       // count.
       if (curr_char == prev_char) {
         count++;
-      }
-      // If the characters are different, write the compressed run and reset.
-      else {
-        fwrite(&count, sizeof(uint32_t), 1, stdout);
-        fwrite(&prev_char, sizeof(uint8_t), 1, stdout);
+
+      } else {
+        // If the characters are different, write the compressed run and reset.
+        fwrite(&count, sizeof(unsigned int), 1, stdout);
+        fwrite(&prev_char, sizeof(unsigned char), 1, stdout);
         prev_char = curr_char;
         count = 1;
       }
@@ -59,9 +58,9 @@ int main(int argc, char *argv[]) {
   }
 
   // After all files are processed, write the last compressed run to stdout.
-  if (count > 0) {
-    fwrite(&count, sizeof(uint32_t), 1, stdout);
-    fwrite(&prev_char, sizeof(uint8_t), 1, stdout);
+  if (count > 0) { // Make sure fgetc() succeeded at least once
+    fwrite(&count, sizeof(unsigned int), 1, stdout);
+    fwrite(&prev_char, sizeof(unsigned char), 1, stdout);
   }
 
   return EXIT_SUCCESS;
