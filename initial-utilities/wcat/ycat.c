@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     }
     // read stream file chunk by chunk and write to stdout
     size_t bytes_read = 0;
+    // PERF: read stream file chunk by chunk and write to stdout
     while ((bytes_read = fread(buffer, sizeof(char), BUFSIZ, fp)) > 0) {
       if (fwrite(buffer, sizeof(char), bytes_read, stdout) < bytes_read) {
         fprintf(stderr, "ycat: error writing file %s: %s\n", argv[i],

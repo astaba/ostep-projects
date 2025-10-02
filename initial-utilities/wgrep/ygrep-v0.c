@@ -7,12 +7,14 @@
 #include <string.h>
 
 /**
- * @brief Searches for occurrences of a search term in a file stream and prints matching lines.
+ * @brief Searches for occurrences of a search term in a file stream and prints
+ * matching lines.
  *
- * This function reads each line from the given file stream and searches for all occurrences
- * of the specified search term within each line. For every match found, it prints the filename,
- * line number, column number (1-based), and the entire line containing the match. If the line
- * does not end with a newline character, a newline is appended to maintain output formatting.
+ * This function reads each line from the given file stream and searches for all
+ * occurrences of the specified search term within each line. For every match
+ * found, it prints the filename, line number, column number (1-based), and the
+ * entire line containing the match. If the line does not end with a newline
+ * character, a newline is appended to maintain output formatting.
  *
  * @param stream     Pointer to the file stream to search.
  * @param searchterm The string to search for within the file.

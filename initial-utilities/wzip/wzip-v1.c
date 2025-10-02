@@ -18,6 +18,12 @@ int main(int argc, char *argv[]) {
   uint32_t count = 0;
   int prev_char = -1;
   int curr_char;
+  // We are to parse each argument files, encoding each character to an 4-byte
+  // integer count accounting for its circumstantial consecutive occurrence and
+  // a 1-byte char for itself.
+  // The trickiest part: The assignment requires all files to be parsed in one
+  // single batch. Consequently, the count must be kept for a single character
+  // ending one file and beginning another.
 
   // Iterate over each file provided as an argument.
   for (int i = 1; i < argc; i++) {

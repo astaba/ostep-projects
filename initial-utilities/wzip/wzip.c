@@ -19,10 +19,12 @@
  *   wzip file1 [file2 ...]
  *
  * If no files are provided, the program prints a usage message and exits.
- * If any file cannot be opened, an error message is printed and the program exits.
+ * If any file cannot be opened, an error message is printed and the program
+ * exits.
  *
- * The program processes files in order, treating them as a single continuous stream.
- * For each run of identical bytes, it outputs the count and the byte value.
+ * The program processes files in order, treating them as a single continuous
+ * stream. For each run of identical bytes, it outputs the count and the byte
+ * value.
  */
 int main(int argc, char *argv[]) {
   if (argc == 1) {

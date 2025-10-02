@@ -8,21 +8,23 @@
 #include <string.h>
 
 /*
- * wunzip.c - A simple decompression utility for a custom run-length encoded format.
+ * wunzip.c - A simple decompression utility for a custom run-length encoded
+ * format.
  *
  * Usage:
  *   wunzip file1 [file2 ...]
  *
  * For each input file, this program reads a sequence of (count, ascii) pairs,
- * where 'count' is a 4-byte unsigned integer (uint32_t) and 'ascii' is a 1-byte
- * unsigned integer (uint8_t). For each pair, it writes 'count' copies of the
- * character 'ascii' to standard output.
+ * where 'count' is a 4-byte unsigned integer (unsigned int) and 'ascii' is a
+ * 1-byte unsigned integer (unsigned char). For each pair, it writes 'count'
+ * copies of the character 'ascii' to standard output.
  *
- * If no files are provided, or if an error occurs while opening or reading a file,
- * an error message is printed and the program exits with a failure status.
+ * If no files are provided, or if an error occurs while opening or reading a
+ * file, an error message is printed and the program exits with a failure
+ * status.
  *
- * The program processes each file in order, decompressing their contents to stdout.
- * It uses a buffer to efficiently write repeated characters in chunks.
+ * The program processes each file in order, decompressing their contents to
+ * stdout. It uses a buffer to efficiently write repeated characters in chunks.
  *
  * Error handling:
  *   - Prints usage if no files are specified.
@@ -51,6 +53,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
       }
 
+      // TRICK: Use a buffer to efficiently write repeated characters in chunks.
       char outbuf[4096];
       memset(outbuf, ascii, sizeof(outbuf));
       while (count > 0) {
