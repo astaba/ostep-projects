@@ -8,7 +8,11 @@ DB_PROGRAM="kv-v1.out"
 DB_SOURCE="kv-v1.c"
 DB_FILE="database.txt"
 VALGRIND_LOG="valgrind-log.txt"
-WORDLIST="/usr/share/dict/words"
+# WORDLIST="/usr/share/dict/words"
+WORDLIST="/usr/share/dict/spanish"
+readonly MIN_KEY=0
+readonly MAX_KEY=9999
+
 
 # --- Utility Functions ---
 
@@ -16,6 +20,7 @@ WORDLIST="/usr/share/dict/words"
 # Function to validate the count argument.
 _validate_count() {
     local count="$1"
+	local max_unique_keys=$((MAX_KEY - MIN_KEY + 1))
 
     if [[ -z "$count" ]]; then
         command echo "Error: Missing argument for count." >&2
@@ -27,8 +32,8 @@ _validate_count() {
         return 1
     fi
 
-    if (( count <= 0 )); then
-        command echo "Error: The count must be a positive number greater than 0." >&2
+    if (( count > max_unique_keys )); then
+		echo "Error: range $count is out of bound $max_unique_keys" >&2
         return 1
     fi
 
@@ -82,26 +87,20 @@ _generate_word() {
 _populate_db() {
     local count="$1"
     command echo "Populating database with $count arbitrary entries..."
-
     # Clean any existing database file
     command rm -f "$DB_FILE"
-
-    local key_list=($(shuf -i 10-99 -n ${count}))
-
+    # Generate a list of unique keys.
+    local key_list=($(shuf -i ${MIN_KEY}-${MAX_KEY} -n ${count} | sort -n))
+    # Use a C-style for loop to generate a list of random values.
     local value_list=()
-    local i=0
-    until ((i++ == count));do
+	for ((i = 0; i < count; i++)); do
         value_list+=($(_generate_word))
-    done
-
-    local cmd_str=""
-    for i in $(seq 0 $((count-1))); do
-        cmd_str+=" p,${key_list[$i]},${value_list[$i]}"
-    done
-
-    # Execute the command to populate the database.
-    # We use eval to handle the dynamic command string.
-    command eval ./"$DB_PROGRAM" "$cmd_str" > /dev/null 2>&1
+	done
+	# Loop echo output of "<key>,<value>\n" string until count
+	# is met and redirect all that to a disk file.
+	for ((i = 0; i < count; i++)); do
+		echo "${key_list[$i]},${value_list[$i]}"
+	done > "$DB_FILE"
 }
 
 # ==  Test helper functions  ===================================================
@@ -268,8 +267,6 @@ case "$1" in
         _compile_program
         echo "--- Populate database ---"
         _populate_db "$2"
-        echo "Display database..."
-        ./"$DB_PROGRAM" a
         ;;
 
     "v"|"val")
