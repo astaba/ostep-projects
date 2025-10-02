@@ -1,5 +1,6 @@
 /* ostep-projects/processes-shell/wish-v2.c */
 // Created on: Tue Sep 30 18:42:41 +01 2025
+// Completed on: Thu Oct  2 22:58:55 +01 2025
 // INFO: Usage: This 'wish' shell default path holds "/bin" directory.
 // Without custom path only three builtins commands are available:
 // path, cd, exit.
